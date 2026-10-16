@@ -34,52 +34,80 @@ let mainScene = null;
 class MainScene extends Phaser.Scene {
   constructor() { super('main'); }
 
+  preload() {
+    this.load.image('factory', 'assets/factory.png');
+    this.load.image('conveyor', 'assets/conveyor.png');
+    this.load.image('cube', 'assets/cube.png');
+  }
+
   create() {
     mainScene = this;
-    this.cube = null;
-    this.startProduction();
+    this.cube = false;
+    this.cubeHp = 0;
+
+    this.factory = this.add.image(0, 0, 'factory').setOrigin(0.5, 1);
+    this.conveyor = this.add.image(0, 0, 'conveyor').setOrigin(0.5, 0);
+
+    this.cubeSprite = this.add.image(0, 0, 'cube').setVisible(false).setInteractive();
+    this.hpText = this.add.text(0, 0, '', {
+      fontSize: '28px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5).setVisible(false);
+
+    this.cubeSprite.on('pointerdown', () => this.hitCube());
+    this.scale.on('resize', () => this.layout());
+
+    this.layout();
     this.time.addEvent({ delay: 5000, loop: true, callback: save });
     this.spawnCube();
     updateHUD();
   }
 
-  startProduction() {
-    if (this.prodTimer) this.prodTimer.remove();
-    this.prodTimer = this.time.addEvent({
-      delay: produceInterval(),
-      loop: true,
-      callback: () => this.spawnCube()
-    });
+  layout() {
+    const w = this.scale.width, h = this.scale.height;
+
+    const fScale = (w * 0.9) / this.factory.width;
+    this.factory.setScale(fScale).setPosition(w / 2, h * 0.45);
+
+    const cScale = (w * 0.9) / this.conveyor.width;
+    this.conveyor.setScale(cScale).setPosition(w / 2, h * 0.45);
+
+    this.cubeSize = w * 0.14;
+    this.cubeBaseScale = this.cubeSize / this.cubeSprite.width;
+    const cubeX = w / 2;
+    const cubeY = this.conveyor.y - this.cubeSize * 0.3;
+    this.cubeSprite.setScale(this.cubeBaseScale).setPosition(cubeX, cubeY);
+    this.hpText.setPosition(cubeX, cubeY);
   }
 
   spawnCube() {
     if (this.cube) return;
-    const w = this.scale.width, h = this.scale.height;
-    const size = Math.min(w, h) * 0.22;
-
-    const rect = this.add.rectangle(w / 2, h / 2, size, size, 0x4fc3f7)
-      .setStrokeStyle(4, 0xffffff)
-      .setInteractive();
-    rect.hp = CUBE_MAX_HP;
-    rect.label = this.add.text(w / 2, h / 2, String(rect.hp), { fontSize: '32px', color: '#000' }).setOrigin(0.5);
-
-    rect.on('pointerdown', () => this.hitCube(rect));
-    this.cube = rect;
+    this.cube = true;
+    this.cubeHp = CUBE_MAX_HP;
+    this.cubeSprite.setScale(this.cubeBaseScale).setAlpha(1).setVisible(true);
+    this.hpText.setText(String(this.cubeHp)).setVisible(true);
   }
 
-  hitCube(rect) {
-    rect.hp -= 1;
-    rect.label.setText(String(rect.hp));
-    this.tweens.add({ targets: rect, scaleX: 0.9, scaleY: 0.9, yoyo: true, duration: 80 });
+  hitCube() {
+    if (!this.cube) return;
+    this.cubeHp -= 1;
+    this.hpText.setText(String(this.cubeHp));
+    this.tweens.add({
+      targets: this.cubeSprite,
+      scale: this.cubeBaseScale * 0.9,
+      yoyo: true,
+      duration: 80
+    });
+    if (this.cubeHp <= 0) this.breakCube();
+  }
 
-    if (rect.hp <= 0) {
-      state.money += cubeValue();
-      state.totalBroken += 1;
-      rect.label.destroy();
-      rect.destroy();
-      this.cube = null;
-      updateHUD();
-    }
+  breakCube() {
+    state.money += cubeValue();
+    state.totalBroken += 1;
+    this.cube = false;
+    this.cubeSprite.setVisible(false);
+    this.hpText.setVisible(false);
+    updateHUD();
+    this.time.delayedCall(produceInterval(), () => this.spawnCube());
   }
 }
 
@@ -89,7 +117,6 @@ function buyUpgrade() {
   state.money -= cost;
   state.speedLevel += 1;
   save();
-  mainScene.startProduction();
   updateHUD();
 }
 
@@ -99,11 +126,16 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) save();
 });
 
+if (screen.orientation && screen.orientation.lock) {
+  screen.orientation.lock('portrait').catch(() => { });
+}
+
 load();
 
 new Phaser.Game({
   type: Phaser.AUTO,
   backgroundColor: '#1b1f2a',
-  scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+  pixelArt: true,
+  scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
   scene: [MainScene]
 });
