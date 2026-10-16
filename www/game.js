@@ -1,141 +1,126 @@
-const SAVE_KEY = 'cubefactory-save-v1';
-const CUBE_MAX_HP = 5;
+const W = 941, H = 1672; // مقاس صورة الخلفية
 
-const state = { money: 0, speedLevel: 1, totalBroken: 0 };
-
-function load() {
-  try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && s.version === 1) Object.assign(state, s.data);
-  } catch (e) { }
-}
-
-function save() {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, data: state }));
-  } catch (e) { }
-}
-
-function produceInterval() { return Math.max(800, 4000 * Math.pow(0.9, state.speedLevel - 1)); }
-function upgradeCost()     { return Math.floor(10 * Math.pow(1.2, state.speedLevel - 1)); }
-function cubeValue()       { return 1; }
-
-function updateHUD() {
-  document.getElementById('money').textContent = Math.floor(state.money);
-  document.getElementById('lvl').textContent = state.speedLevel;
-  const cost = upgradeCost();
-  const btn = document.getElementById('upgrade');
-  btn.textContent = `ترقية الإنتاج (${cost})`;
-  btn.disabled = state.money < cost;
-}
-
-let mainScene = null;
-
-class MainScene extends Phaser.Scene {
-  constructor() { super('main'); }
+class MenuScene extends Phaser.Scene {
+  constructor() { super('menu'); }
 
   preload() {
-    this.load.image('factory', 'assets/factory.png');
-    this.load.image('conveyor', 'assets/conveyor.png');
-    this.load.image('cube', 'assets/cube.png');
+    this.load.image('bg', 'assets/background.jpg');
   }
 
   create() {
-    mainScene = this;
-    this.cube = false;
-    this.cubeHp = 0;
+    const sw = this.scale.width, sh = this.scale.height;
 
-    this.factory = this.add.image(0, 0, 'factory').setOrigin(0.5, 1);
-    this.conveyor = this.add.image(0, 0, 'conveyor').setOrigin(0.5, 0);
+    // الخلفية: تغطي الشاشة كلها
+    this.bg = this.add.image(sw / 2, sh / 2, 'bg');
+    this.bg.setScale(Math.max(sw / W, sh / H));
+    const s = this.bg.scaleX;
+    const left = sw / 2 - (W * s) / 2;
+    const top = sh / 2 - (H * s) / 2;
+    const px = (x) => left + x * s;
+    const py = (y) => top + y * s;
 
-    this.cubeSprite = this.add.image(0, 0, 'cube').setVisible(false).setInteractive();
-    this.hpText = this.add.text(0, 0, '', {
-      fontSize: '28px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5).setVisible(false);
+    // نسخة صغيرة نرسم فيها جزيئات (نقطة بيضاء)
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(0, 0, 4, 4);
+    g.generateTexture('dot', 4, 4);
+    g.destroy();
 
-    this.cubeSprite.on('pointerdown', () => this.hitCube());
-    this.scale.on('resize', () => this.layout());
-
-    this.layout();
-    this.time.addEvent({ delay: 5000, loop: true, callback: save });
-    this.spawnCube();
-    updateHUD();
-  }
-
-  layout() {
-    const w = this.scale.width, h = this.scale.height;
-
-    const fScale = (w * 0.9) / this.factory.width;
-    this.factory.setScale(fScale).setPosition(w / 2, h * 0.45);
-
-    const cScale = (w * 0.9) / this.conveyor.width;
-    this.conveyor.setScale(cScale).setPosition(w / 2, h * 0.45);
-
-    this.cubeSize = w * 0.14;
-    this.cubeBaseScale = this.cubeSize / this.cubeSprite.width;
-    const cubeX = w / 2;
-    const cubeY = this.conveyor.y - this.cubeSize * 0.3;
-    this.cubeSprite.setScale(this.cubeBaseScale).setPosition(cubeX, cubeY);
-    this.hpText.setPosition(cubeX, cubeY);
-  }
-
-  spawnCube() {
-    if (this.cube) return;
-    this.cube = true;
-    this.cubeHp = CUBE_MAX_HP;
-    this.cubeSprite.setScale(this.cubeBaseScale).setAlpha(1).setVisible(true);
-    this.hpText.setText(String(this.cubeHp)).setVisible(true);
-  }
-
-  hitCube() {
-    if (!this.cube) return;
-    this.cubeHp -= 1;
-    this.hpText.setText(String(this.cubeHp));
-    this.tweens.add({
-      targets: this.cubeSprite,
-      scale: this.cubeBaseScale * 0.9,
-      yoyo: true,
-      duration: 80
+    // توهج المصابيح الثلاث (حسب إحداثيات الصورة)
+    const lamps = [[108, 130], [467, 130], [830, 130]];
+    lamps.forEach(([lx, ly], i) => {
+      const glow = this.add.circle(px(lx), py(ly), 70 * s, 0xffb347, 0.25)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.15, to: 0.4 },
+        scale: { from: 0.9, to: 1.15 },
+        duration: 1200 + i * 250,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
     });
-    if (this.cubeHp <= 0) this.breakCube();
+
+    // غبار يطفو
+    this.add.particles(0, 0, 'dot', {
+      x: { min: 0, max: sw },
+      y: { min: 0, max: sh },
+      lifespan: 6000,
+      speedY: { min: -20, max: -5 },
+      speedX: { min: -8, max: 8 },
+      scale: { start: 0.6, end: 0 },
+      alpha: { start: 0.5, end: 0 },
+      frequency: 150,
+      tint: 0xcfe9ff
+    });
+
+    // شرر برتقالي من الأنابيب (يمين)
+    this.add.particles(px(900), py(520), 'dot', {
+      lifespan: 900,
+      speed: { min: 30, max: 90 },
+      angle: { min: 200, max: 340 },
+      gravityY: 150,
+      scale: { start: 1, end: 0 },
+      frequency: 700,
+      tint: 0xf58a1f,
+      blendMode: 'ADD'
+    });
+
+    // العنوان
+    const title = this.add.text(sw / 2, sh * 0.3, 'CUBE\nFACTORY', {
+      fontFamily: 'Arial Black, Arial, sans-serif',
+      fontSize: Math.floor(sw * 0.16) + 'px',
+      color: '#f58a1f',
+      align: 'center',
+      stroke: '#0b0f1a',
+      strokeThickness: 10
+    }).setOrigin(0.5);
+    this.tweens.add({
+      targets: title,
+      scale: { from: 1, to: 1.06 },
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // زر Play
+    this.makeButton(sw / 2, sh * 0.58, sw * 0.6, 90, 'PLAY', 0xf58a1f, () => {
+      this.cameras.main.flash(250, 255, 255, 255);
+    });
+
+    // زر الإعدادات
+    this.makeButton(sw / 2, sh * 0.58 + 120, sw * 0.6, 70, 'SETTINGS', 0x3a4a6b, () => {
+      this.cameras.main.shake(150, 0.004);
+    });
   }
 
-  breakCube() {
-    state.money += cubeValue();
-    state.totalBroken += 1;
-    this.cube = false;
-    this.cubeSprite.setVisible(false);
-    this.hpText.setVisible(false);
-    updateHUD();
-    this.time.delayedCall(produceInterval(), () => this.spawnCube());
+  makeButton(x, y, w, h, label, color, onClick) {
+    const box = this.add.rectangle(0, 0, w, h, color)
+      .setStrokeStyle(5, 0x0b0f1a);
+    const txt = this.add.text(0, 0, label, {
+      fontFamily: 'Arial Black, Arial, sans-serif',
+      fontSize: Math.floor(h * 0.45) + 'px',
+      color: '#ffffff',
+      stroke: '#0b0f1a',
+      strokeThickness: 5
+    }).setOrigin(0.5);
+    const c = this.add.container(x, y, [box, txt]);
+    c.setSize(w, h).setInteractive();
+
+    c.on('pointerdown', () => {
+      this.tweens.add({ targets: c, scale: 0.94, duration: 80, yoyo: true });
+      onClick();
+    });
+    return c;
   }
 }
-
-function buyUpgrade() {
-  const cost = upgradeCost();
-  if (state.money < cost) return;
-  state.money -= cost;
-  state.speedLevel += 1;
-  save();
-  updateHUD();
-}
-
-document.getElementById('upgrade').addEventListener('click', buyUpgrade);
-
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) save();
-});
-
-if (screen.orientation && screen.orientation.lock) {
-  screen.orientation.lock('portrait').catch(() => { });
-}
-
-load();
 
 new Phaser.Game({
   type: Phaser.AUTO,
   backgroundColor: '#1b1f2a',
   pixelArt: true,
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
-  scene: [MainScene]
+  scene: [MenuScene]
 });
