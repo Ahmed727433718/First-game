@@ -19,6 +19,7 @@ jobs:
       - run: npm install
       - run: npx cap add android
       - run: npx cap sync android
+      - run: sed -i 's/<activity/<activity android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
