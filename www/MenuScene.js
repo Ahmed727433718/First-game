@@ -55,6 +55,10 @@ class MenuScene extends Phaser.Scene {
   constructor() { super(MENU_CFG.sceneKey); }
   preload() {
     this.load.image(MENU_CFG.bgKey, 'assets/background.jpg');
+    this.load.image('game_button_empty', 'assets/game_button_empty.png');
+    this.load.image('play_icon_match', 'assets/play_icon_match.png');
+    this.load.image('settings_button_body', 'assets/settings_button_body.png');
+    this.load.image('settings_gear', 'assets/settings_gear.png');
      }
 
   /* ───────────────────────── البناء الرئيسي ───────────────────────── */
