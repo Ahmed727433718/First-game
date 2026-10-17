@@ -184,7 +184,7 @@ class MenuScene extends Phaser.Scene {
   buildBackground() {
     const { sw, sh } = this;
     const W = MENU_CFG.bgW, H = MENU_CFG.bgH;
-    this.bg = this.add.image(sw / 2, sh / 2, MENU_CFG.bgKey).setDepth(0);
+    this.bg = this.add.image(sw / 2, sh / 2, MENU_CFG.bgKey).setDepth(0).setVisible(false);
     this.bg.setScale(Math.max(sw / W, sh / H));
     const s = this.bg.scaleX;
     const left = sw / 2 - (W * s) / 2;
