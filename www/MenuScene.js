@@ -53,6 +53,9 @@ function menuShade(hex, f) {
 
 class MenuScene extends Phaser.Scene {
   constructor() { super(MENU_CFG.sceneKey); }
+  preload() {
+    this.load.image(MENU_CFG.bgKey, 'assets/background.jpg');
+     }
 
   /* ───────────────────────── البناء الرئيسي ───────────────────────── */
   create() {
