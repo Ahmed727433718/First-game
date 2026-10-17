@@ -1,10 +1,9 @@
 const CFG = {
-  bgVideo: 'assets/bg.mp4',
   ui: 'assets/ui/',
   settingsKey: 'cubefactory_settings_v1',
   accent: 0xf58a1f,
-  pressDepth: 8,
-  dims: { W: 540, H: 960 }
+  W: 540,
+  H: 960
 };
 
 const DEFAULT_SETTINGS = { music: true, sound: true, vibration: true };
@@ -22,16 +21,12 @@ function saveSettings(s) {
   try { localStorage.setItem(CFG.settingsKey, JSON.stringify(s)); } catch (e) {}
 }
 
-// مساعد: يرجع اسم الصورة الموجودة مسبقاً في Phaser
-function uiKey(file) {
-  return file.replace(/\.png$/, '');
-}
-
-// تحميل كل الأصول في مكان واحد
 class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }
 
   preload() {
+    this.load.video('bgvid', 'assets/bg.mp4', 'loadeddata', false, true);
+
     const files = [
       'cube_factory_logo_2400x900.png',
       'play_body_2400x816.png',
@@ -49,7 +44,7 @@ class BootScene extends Phaser.Scene {
       'slider_fill_1560x120.png',
       'slider_handle_256x256.png'
     ];
-    files.forEach((f) => this.load.image(uiKey(f), CFG.ui + f));
+    files.forEach((f) => this.load.image(f.replace(/\.png$/, ''), CFG.ui + f));
   }
 
   create() {
@@ -59,28 +54,36 @@ class BootScene extends Phaser.Scene {
 
 class MenuScene extends Phaser.Scene {
   constructor() { super('menu'); }
-  // تفاصيل الشاشة الرئيسية تُكتب في الخطوة الجاية داخل هذا الكلاس
+
   create() {
-    this.add.text(this.scale.width / 2, this.scale.height / 2, 'Cube Factory', {
+    const w = this.scale.width, h = this.scale.height;
+
+    // الفيديو خلفية تغطي الشاشة كلها
+    const video = this.add.video(w / 2, h / 2, 'bgvid');
+    video.setDepth(0);
+    video.play(true);
+    video.setMute(true);
+    const scale = Math.max(w / video.width, h / video.height);
+    video.setScale(scale);
+
+    this.add.text(w / 2, h / 2, 'Cube Factory', {
       fontSize: '32px', color: '#ffffff'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(1);
   }
 }
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
-  backgroundColor: 'rgba(0,0,0,0)',
-  pixelArt: false,
+  backgroundColor: '#0b0f1a',
   scale: {
     mode: Phaser.Scale.RESIZE,
-    width: CFG.dims.W,
-    height: CFG.dims.H,
+    width: CFG.W,
+    height: CFG.H,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   scene: [BootScene, MenuScene]
 });
 
-// قفل الوضع العمودي على المتصفح (الأساسي يتم عبر AndroidManifest)
 if (screen.orientation && screen.orientation.lock) {
   screen.orientation.lock('portrait').catch(() => {});
 }
