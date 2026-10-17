@@ -10,7 +10,7 @@ class GameScene extends Phaser.Scene {
 
 new Phaser.Game({
   type: Phaser.AUTO,
-  backgroundColor: '#1b1f2a',
+  backgroundColor: 'rgba(0,0,0,0)',
   pixelArt: true,
   scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
   scene: [MenuScene, GameScene]
