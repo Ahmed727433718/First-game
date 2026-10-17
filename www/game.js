@@ -114,10 +114,10 @@ class MenuScene extends Phaser.Scene {
     video.setMute(true);
 
     // تغطية الشاشة كاملة مع الحفاظ على النسبة
-    const s = Math.max(sw / video.width, sh / video.height);
+        // تغطية الشاشة كاملة (أبعاد الفيديو الأصلية 720×1280)
+    // تغطية الشاشة كاملة (أبعاد الفيديو الأصلية 720×1280)
+    const s = Math.max(sw / 720, sh / 1280);
     video.setScale(s);
-
-    // طبقة تعتيم خفيفة لتبين الواجهة
     this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x050810, 0.35).setDepth(1);
   }
 
