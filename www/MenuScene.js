@@ -456,60 +456,32 @@ class MenuScene extends Phaser.Scene {
 
   makeButton(x, y, w, h, label, color, onClick, opts) {
     opts = opts || {};
-    const ink = MENU_CFG.ink;
-    const lip = Math.round(h * 0.11);          // سماكة الحافة السفلية (إحساس 3D)
-    const r = h * 0.28;
-    const dark = menuShade(color, -0.55);
-    const light = menuShade(color, 0.45);
+    const isPlay = opts.icon === 'play';
+    const bodyKey = isPlay ? 'game_button_empty' : 'settings_button_body';
+    const iconKey = isPlay ? 'play_icon_match' : 'settings_gear';
 
-    // الحافة السفلية الثابتة
-    const base = this.add.graphics();
-    base.fillStyle(ink, 1).fillRoundedRect(-w / 2 - 3, -h / 2 + lip - 3, w + 6, h + 6, r + 3);
-    base.fillStyle(dark, 1).fillRoundedRect(-w / 2, -h / 2 + lip, w, h, r);
+    // جسم الزر من الصورة (بنفس نسبة العرض للارتفاع)
+    const base = this.add.image(0, 0, bodyKey);
+    base.setDisplaySize(w + 16, (w + 16) * (base.height / base.width));
 
-    // وجه الزر (هو اللي يتحرك عند الضغط)
-    const face = this.add.container(0, 0);
-    const body = this.add.graphics();
-    body.fillStyle(ink, 1).fillRoundedRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6, r + 3);
-    body.fillStyle(color, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
-    body.fillStyle(light, 0.38).fillRoundedRect(-w / 2 + 7, -h / 2 + 6, w - 14, h * 0.4,
-      { tl: r - 4, tr: r - 4, bl: 8, br: 8 });
-    face.add(body);
+    // الأيقونة من الصورة، مربعة
+    const iconSize = h * 0.62;
+    const icon = this.add.image(0, 0, iconKey).setDisplaySize(iconSize, iconSize);
 
-    if (opts.shine) {
-      const hh = h / 2 - 8, bar = h * 0.28;
-      const shine = this.add.graphics();
-      shine.fillStyle(0xffffff, 0.42);
-      shine.fillPoints([{ x: 0, y: hh }, { x: bar * 0.7, y: -hh }, { x: bar * 1.5, y: -hh }, { x: bar * 0.8, y: hh }], true);
-      shine.setAlpha(0);
-      face.add(shine);
-      const x0 = -w / 2 + r, x1 = w / 2 - r - bar * 1.5;
-      this.tweens.add({
-        targets: shine, x: { from: x0, to: x1 },
-        duration: 750, repeat: -1, repeatDelay: 1900, delay: 1600, ease: 'Sine.easeInOut',
-        // الشفافية تُحسب من موقع اللمعة نفسه (أضمن من tween.progress مع التكرار اللانهائي)
-        onUpdate: (tw, t) => t.setAlpha(Math.sin(Phaser.Math.Clamp((t.x - x0) / (x1 - x0), 0, 1) * Math.PI) * 0.9)
-      });
-    }
+    // النص
+    const txt = this.menuText(0, 0, label, opts.fontSize || h * 0.5);
 
-    // النص + الأيقونة
-    const txt = this.menuText(0, -h * 0.02, label, opts.fontSize || h * 0.5);
-    const iconW = opts.icon ? h * 0.44 : 0;
-    const gap = opts.icon ? h * 0.2 : 0;
-    const total = iconW + gap + txt.width;
-    txt.x = -total / 2 + iconW + gap + txt.width / 2;
-    face.add(txt);
+    // ترتيب العناصر: أيقونة ثم نص، في وسط الزر
+    const gap = h * 0.12;
+    const total = iconSize + gap + txt.width;
+    icon.x = -total / 2 + iconSize / 2;
+    txt.x = -total / 2 + iconSize + gap + txt.width / 2;
+    txt.y = -h * 0.02;
 
-    if (opts.icon) {
-      const ic = this.add.graphics();
-      const cx = -total / 2 + iconW / 2, cy = -h * 0.02;
-      if (opts.icon === 'play') this.drawPlayIcon(ic, cx, cy, iconW);
-      else this.drawGearIcon(ic, cx, cy, iconW, color);
-      face.add(ic);
-    }
-
-    const c = this.add.container(x, y, [base, face]).setDepth(10);
-    c.setSize(w + 16, h + lip + 16);
+    const face = this.add.container(0, 0, [base, icon, txt]);
+    const c = this.add.container(x, y, [face]).setDepth(10);
+    const hitH = base.displayHeight;
+    c.setSize(w + 16, hitH + 16);
     c.setInteractive({ useHandCursor: true });
 
     const allowed = () => (opts.modal ? this.panelOpen && !this.busy : this.ready && !this.busy && !this.panelOpen);
@@ -517,20 +489,20 @@ class MenuScene extends Phaser.Scene {
     c.on('pointerdown', () => {
       if (!allowed()) return;
       down = true;
-      this.press(face, lip, true);
+      this.press(face, 0, true);
       this.sfx(MENU_CFG.clickKey);
       this.haptic(12);
     });
     c.on('pointerup', () => {
       if (!down) return;
       down = false;
-      this.press(face, lip, false);
+      this.press(face, 0, false);
       onClick();
     });
     c.on('pointerout', () => {
       if (!down) return;
       down = false;
-      this.press(face, lip, false);
+      this.press(face, 0, false);
     });
     return c;
   }
