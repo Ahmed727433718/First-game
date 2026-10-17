@@ -84,9 +84,9 @@ class MenuScene extends Phaser.Scene {
     this.buildBackground();
     this.buildLamps();
     this.buildDust();
-    this.buildCubes();
+    //this.buildCubes();
     this.buildSparks();
-    this.buildVignette();
+    //this.buildVignette();
     this.buildTitle();
     this.buildButtons();
     this.buildFooter();
